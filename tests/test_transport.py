@@ -2,6 +2,7 @@ import socket
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 
 from blockchaincoin import ConsensusNode, Wallet
 from blockchaincoin.consensus import ConsensusTransaction, OutPoint, TxInput, TxOutput
@@ -320,6 +321,25 @@ class TransportTests(unittest.TestCase):
             self.assertEqual(client.recv_messages(), [])
         finally:
             client.close()
+
+    def test_client_recv_treats_connection_reset_as_eof(self) -> None:
+        class ResettingSocket:
+            closed = False
+
+            def recv(self, _max_bytes: int) -> bytes:
+                raise ConnectionResetError("reset by peer")
+
+            def close(self) -> None:
+                self.closed = True
+
+        resetting_socket = ResettingSocket()
+
+        client = TCPPeerClient("unused", 0, AUTH_KEY)
+        client.socket = cast(socket.socket, resetting_socket)
+
+        self.assertEqual(client.recv_messages(), [])
+        self.assertTrue(resetting_socket.closed)
+        self.assertIsNone(client.socket)
 
 
 if __name__ == "__main__":

@@ -214,7 +214,11 @@ class TCPPeerClient:
     def recv_messages(self, max_bytes: int = 65536) -> list[PeerMessage]:
         if self.socket is None:
             raise TransportError("client is not connected")
-        chunk = self.socket.recv(max_bytes)
+        try:
+            chunk = self.socket.recv(max_bytes)
+        except ConnectionResetError:
+            self.close()
+            return []
         if not chunk:
             return []
         return self.buffer.feed(chunk)
