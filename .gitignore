@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.venv/
+build/
+dist/
+*.egg-info/
+*.json.tmp
+chain.json
+wallet*.json
+alice.json
+bob.json
