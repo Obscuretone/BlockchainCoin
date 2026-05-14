@@ -2,11 +2,10 @@
 
 BlockchainCoin is a technically complete academic release of a UTXO blockchain currency node written in Python. The project is intended for review, teaching, controlled experiments, reproducible builds, and research networks where the claims can be inspected directly in code, tests, and documentation.
 
-The supported research path is the UTXO-native node. The legacy account-ledger CLI is retained for compatibility and local workflows, but it is not the consensus path being documented for academic evaluation.
+The UTXO-native node is the only chain implementation in the package.
 
 The node ships with:
 
-- A compatibility CLI/account ledger used for wallet, transaction, mining, and local workflow support.
 - A durable full-node substrate backed by SQLite WAL storage, schema versioning, cumulative work tracking, hostile-input validation, and a 100% coverage gate.
 - A UTXO consensus-state module used as the consensus-critical core for research-network operation.
 - A UTXO-native local node path backed by fork-aware storage and fork choice, with mempool admission checks, mining, import validation, reorg-capable active state selection, and state rebuild on restart.
@@ -61,7 +60,6 @@ Required controls for credible academic use:
 - Ed25519 wallet keys using `cryptography`
 - Deterministic transaction IDs and block hashes
 - Address validation with `bcc_` addresses
-- Nonce-based replay protection in the current account-ledger transaction model
 - UTXO transaction validation with signed inputs, explicit outputs, fee calculation, double-spend rejection, and supply caps
 - UTXO block validation with ordered transaction application, coinbase reward enforcement, fee-aware miner payouts, proof-of-work checks, and state rebuilds
 - Canonical binary serialization for UTXO transaction IDs, Merkle tree leaves, and block header hashes
@@ -114,7 +112,7 @@ Required controls for credible academic use:
 - Node runtime lifecycle wrapper
 - UTXO CLI tools for node status, wallet/address UTXO inspection, transaction creation, mempool inspection, block lookup, and transaction lookup
 - CLI wallet creation can write passphrase-encrypted wallet files
-- JSON CLI compatibility for local workflows
+- JSON CLI output for local and scripted workflows
 - PEP 561 typing marker
 - Pyright/Pylance-clean package and test suite
 - 100% line and branch coverage for the `blockchaincoin` package
@@ -164,19 +162,17 @@ blockchaincoin --json balance --db node.sqlite3 --wallet bob.json
 blockchaincoin --json chain --db node.sqlite3
 ```
 
-Legacy account-ledger compatibility is still available with `--chain`.
-
-Explicit UTXO node workflow:
+Additional node workflow:
 
 ```bash
 blockchaincoin wallet new --out miner.json
-blockchaincoin --json utxo-init --db node.sqlite3 --genesis-wallet miner.json --amount 100 --peer-auth-key "$BCC_PEER_AUTH_KEY"
-blockchaincoin --json utxo-status --db node.sqlite3
-blockchaincoin --json utxo-utxos --db node.sqlite3 --wallet miner.json
-blockchaincoin --json utxo-mempool --db node.sqlite3
-blockchaincoin utxo-mine --db node.sqlite3 --miner-wallet miner.json
-blockchaincoin --json utxo-block --db node.sqlite3 --height 1
-blockchaincoin --json utxo-serve --db node.sqlite3 --node-id node-a --peer-auth-key "$BCC_PEER_AUTH_KEY"
+blockchaincoin --json init --db node.sqlite3 --genesis-wallet miner.json --amount 100 --peer-auth-key "$BCC_PEER_AUTH_KEY"
+blockchaincoin --json chain --db node.sqlite3
+blockchaincoin --json utxos --db node.sqlite3 --wallet miner.json
+blockchaincoin --json mempool --db node.sqlite3
+blockchaincoin mine --db node.sqlite3 --miner-wallet miner.json
+blockchaincoin --json block --db node.sqlite3 --height 1
+blockchaincoin --json serve --db node.sqlite3 --node-id node-a --peer-auth-key "$BCC_PEER_AUTH_KEY"
 ```
 
 ## Development

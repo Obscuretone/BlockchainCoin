@@ -1,11 +1,10 @@
-"""Educational blockchain currency package."""
+"""Academic UTXO blockchain currency package."""
 
-from .chain import Blockchain
 from .consensus import BlockProcessor, ConsensusBlock, ConsensusState
+from .constants import MAX_MONEY
 from .crypto import Wallet
 from .fork_choice import ForkChoice
 from .network import BlockHeader, MessageType, PeerMessage, validate_header_chain
-from .node import BlockchainNode
 from .peer import PeerSession
 from .peers import PeerAddressManager
 from .release import (
@@ -25,8 +24,6 @@ from .transport import NodeTCPServerAdapter, TCPPeerClient
 from .utxo_node import ConsensusNode, MempoolPolicy, MempoolPolicyError, ReorgEvent
 
 __all__ = [
-    "Blockchain",
-    "BlockchainNode",
     "BlockHeader",
     "BlockProcessor",
     "ConsensusNode",
@@ -36,6 +33,7 @@ __all__ = [
     "ConsensusBlock",
     "ConsensusState",
     "ForkChoice",
+    "MAX_MONEY",
     "MessageType",
     "PeerMessage",
     "validate_header_chain",

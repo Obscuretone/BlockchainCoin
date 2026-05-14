@@ -17,7 +17,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import cast
 
-from .chain import MAX_MONEY
+from .constants import MAX_MONEY
 from .crypto import PublicKey, Wallet, canonical_json, is_valid_address, sha256_hex
 
 COINBASE_PREV_TXID = "0" * 64

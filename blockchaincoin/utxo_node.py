@@ -12,7 +12,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .chain import MAX_MONEY
 from .consensus import (
     UTXO,
     BlockProcessor,
@@ -23,6 +22,7 @@ from .consensus import (
     TxInput,
     TxOutput,
 )
+from .constants import MAX_MONEY
 from .crypto import Wallet, is_valid_address
 from .fork_choice import ForkChoice
 from .storage import (

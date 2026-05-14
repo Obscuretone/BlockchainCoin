@@ -116,11 +116,9 @@ class PeerSessionTests(unittest.TestCase):
         session = PeerSession(network="regtest", node_id="alice")
         session.receive(transaction_message(self.transaction))
         self.assertIn(("tx", self.transaction.txid), session.known_inventory)
-        session.receive(PeerMessage(MessageType.TX, {"transaction": self.transaction.to_dict()}))
 
         session.receive(block_message(self.block))
         self.assertIn(("block", self.block.hash), session.known_inventory)
-        session.receive(PeerMessage(MessageType.BLOCK, {"block": self.block.to_dict()}))
 
         session.receive(PeerMessage(MessageType.REJECT, {"reason": "nope"}))
         self.assertEqual(session.misbehavior_score, 1)

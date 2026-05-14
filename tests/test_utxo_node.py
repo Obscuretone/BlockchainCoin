@@ -1,4 +1,3 @@
-import json
 import sqlite3
 import tempfile
 import unittest
@@ -6,7 +5,6 @@ from pathlib import Path
 from typing import cast
 
 from blockchaincoin import ConsensusNode, Wallet
-from blockchaincoin.chain import MAX_MONEY
 from blockchaincoin.consensus import (
     UTXO,
     BlockProcessor,
@@ -19,9 +17,9 @@ from blockchaincoin.consensus import (
     TxOutput,
     UTXOSet,
 )
+from blockchaincoin.constants import MAX_MONEY
 from blockchaincoin.storage import (
     IndexedSpend,
-    SQLiteConsensusStore,
     SQLiteForkStore,
     SQLiteInvalidBlockCache,
     SQLiteMempoolStore,
@@ -32,69 +30,6 @@ from blockchaincoin.utxo_node import ConsensusNodeError, MempoolPolicy, MempoolP
 
 
 class ConsensusStoreTests(unittest.TestCase):
-    def test_consensus_store_persists_and_reopens(self) -> None:
-        alice = Wallet.create()
-        block = ConsensusNode._build_genesis_block({alice.address: 10}, difficulty=0)
-
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "consensus.sqlite3"
-            store = SQLiteConsensusStore(path)
-            stored = store.put_block(block)
-            self.assertEqual(stored.cumulative_work, 1)
-            self.assertTrue(store.has_block(block.hash))
-            tip = store.tip()
-            self.assertIsNotNone(tip)
-            assert tip is not None
-            self.assertEqual(tip.block.hash, block.hash)
-            self.assertEqual(store.block_at_height(0).block.hash, block.hash)
-            row = store.connection.execute(
-                "SELECT data FROM consensus_blocks WHERE hash = ?",
-                (block.hash,),
-            ).fetchone()
-            self.assertIsNotNone(row)
-            assert row is not None
-            self.assertEqual(bytes.fromhex(str(row["data"])), block.to_bytes())
-            self.assertEqual(store.put_block(block).block.hash, block.hash)
-            store.close()
-
-            reopened = SQLiteConsensusStore(path)
-            self.assertEqual([item.block.hash for item in reopened.iter_blocks()], [block.hash])
-            reopened.close()
-
-            legacy_path = Path(tmp) / "legacy-consensus.sqlite3"
-            legacy_store = SQLiteConsensusStore(legacy_path)
-            with legacy_store.connection:
-                legacy_store.connection.execute(
-                    """
-                    INSERT INTO consensus_blocks (
-                        hash,
-                        height,
-                        previous_hash,
-                        difficulty,
-                        cumulative_work,
-                        data
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        block.hash,
-                        block.height,
-                        block.previous_hash,
-                        block.difficulty,
-                        1,
-                        json.dumps(block.to_dict(), sort_keys=True, separators=(",", ":")),
-                    ),
-                )
-            self.assertEqual(legacy_store.get_block(block.hash).block.hash, block.hash)
-            legacy_store.close()
-
-            connection = sqlite3.connect(path)
-            with connection:
-                connection.execute("UPDATE metadata SET value = '999' WHERE key = 'schema_version'")
-            connection.close()
-            with self.assertRaises(StorageError):
-                SQLiteConsensusStore(path)
-
     def test_utxo_index_persists_snapshots_and_rejects_bad_schema(self) -> None:
         alice = Wallet.create()
         bob = Wallet.create()
@@ -220,18 +155,6 @@ class ConsensusStoreTests(unittest.TestCase):
             self.assertEqual(bytes.fromhex(str(row["data"])), transaction.to_bytes())
             store.replace_all([])
             self.assertEqual(store.count(), 0)
-            with store.connection:
-                store.connection.execute(
-                    """
-                    INSERT INTO mempool_transactions (txid, data)
-                    VALUES (?, ?)
-                    """,
-                    (
-                        transaction.txid,
-                        json.dumps(transaction.to_dict(), sort_keys=True, separators=(",", ":")),
-                    ),
-                )
-            self.assertEqual(store.transactions()[0].txid, transaction.txid)
             store.close()
 
             connection = sqlite3.connect(path)
@@ -262,33 +185,6 @@ class ConsensusStoreTests(unittest.TestCase):
             connection.close()
             with self.assertRaises(StorageError):
                 SQLiteInvalidBlockCache(path)
-
-    def test_consensus_store_rejects_bad_order_and_unknown_blocks(self) -> None:
-        alice = Wallet.create()
-        genesis = ConsensusNode._build_genesis_block({alice.address: 10}, difficulty=0)
-        orphan = ConsensusBlock(
-            1,
-            genesis.hash,
-            (ConsensusState().create_coinbase(alice.address, height=1),),
-            difficulty=0,
-        )
-
-        with tempfile.TemporaryDirectory() as tmp:
-            store = SQLiteConsensusStore(Path(tmp) / "consensus.sqlite3")
-            with self.assertRaises(StorageError):
-                store.put_block(orphan)
-            store.put_block(genesis)
-            with self.assertRaises(StorageError):
-                store.put_block(ConsensusBlock(2, genesis.hash, orphan.transactions, 0))
-            with self.assertRaises(StorageError):
-                store.put_block(ConsensusBlock(1, "1" * 64, orphan.transactions, 0))
-            valid_child = ConsensusBlock(1, genesis.hash, orphan.transactions, 0)
-            self.assertEqual(store.put_block(valid_child).cumulative_work, 2)
-            with self.assertRaises(StorageError):
-                store.get_block("missing")
-            with self.assertRaises(StorageError):
-                store.block_at_height(99)
-            store.close()
 
 
 class ConsensusNodeTests(unittest.TestCase):

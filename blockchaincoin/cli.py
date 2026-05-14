@@ -1,9 +1,8 @@
-"""Command-line interface for compatibility and UTXO research workflows.
+"""Command-line interface for UTXO research workflows.
 
-The CLI intentionally keeps human output and JSON output side by side so the
-same command can support demonstrations, tests, and scripted academic
-experiments. Commands that accept ``--db`` use the UTXO node path; commands that
-accept ``--chain`` use the compatibility account-ledger path.
+The CLI keeps human output and JSON output side by side so the same command can
+support demonstrations, tests, and scripted academic experiments. All chain
+commands use the UTXO consensus node and a SQLite database.
 """
 
 from __future__ import annotations
@@ -13,7 +12,6 @@ import json
 from pathlib import Path
 from typing import cast
 
-from .chain import Blockchain, BlockchainError
 from .crypto import Wallet, is_valid_address
 from .runtime import NodeRuntime, NodeRuntimeConfig
 from .runtime import RuntimeError as NodeRuntimeError
@@ -29,15 +27,6 @@ def _emit(args: argparse.Namespace, payload: dict[str, object], text: str) -> No
         print(text)
 
 
-def _load_chain(path: str) -> Blockchain:
-    """Load a compatibility chain file or exit with an operator-facing message."""
-
-    chain_path = Path(path)
-    if not chain_path.exists():
-        raise SystemExit(f"chain file does not exist: {path}")
-    return Blockchain.load(chain_path)
-
-
 def cmd_wallet_new(args: argparse.Namespace) -> None:
     """Create a plaintext or passphrase-encrypted wallet file."""
 
@@ -48,112 +37,6 @@ def cmd_wallet_new(args: argparse.Namespace) -> None:
         {"address": wallet.address, "wallet": args.out},
         f"created wallet {wallet.address}",
     )
-
-
-def cmd_init(args: argparse.Namespace) -> None:
-    """Initialize either a compatibility chain file or UTXO node database."""
-
-    if getattr(args, "db", None):
-        cmd_utxo_init(args)
-        return
-    wallet = Wallet.load(args.genesis_wallet)
-    chain = Blockchain.create(
-        genesis_allocations={wallet.address: args.amount},
-        difficulty=args.difficulty,
-        mining_reward=args.reward,
-    )
-    chain.save(args.chain)
-    _emit(
-        args,
-        {"address": wallet.address, "amount": args.amount, "chain": args.chain},
-        f"initialized chain with {args.amount} coins for {wallet.address}",
-    )
-
-
-def cmd_balance(args: argparse.Namespace) -> None:
-    """Report a wallet balance from the selected chain backend."""
-
-    if getattr(args, "db", None):
-        cmd_utxo_status(args)
-        return
-    chain = _load_chain(args.chain)
-    wallet = Wallet.load(args.wallet)
-    confirmed = chain.balance_of(wallet.address)
-    pending = chain.balance_of(wallet.address, include_mempool=True)
-    _emit(
-        args,
-        {"address": wallet.address, "confirmed": confirmed, "pending": pending},
-        f"address:   {wallet.address}\nconfirmed: {confirmed}\npending:   {pending}",
-    )
-
-
-def cmd_send(args: argparse.Namespace) -> None:
-    """Create and submit a transaction on the selected chain backend."""
-
-    if getattr(args, "db", None):
-        cmd_utxo_send(args)
-        return
-    chain = _load_chain(args.chain)
-    sender = Wallet.load(args.from_wallet)
-    recipient = Wallet.load(args.to_wallet).address if args.to_wallet else args.to_address
-    if not recipient:
-        raise SystemExit("provide --to-wallet or --to-address")
-    if not is_valid_address(recipient):
-        raise SystemExit("recipient address is invalid")
-    tx = chain.create_transaction(sender, recipient, args.amount, args.fee)
-    txid = chain.add_transaction(tx)
-    chain.save(args.chain)
-    _emit(args, {"txid": txid}, f"queued transaction {txid}")
-
-
-def cmd_mine(args: argparse.Namespace) -> None:
-    """Mine pending transactions on the selected chain backend."""
-
-    if getattr(args, "db", None):
-        cmd_utxo_mine(args)
-        return
-    chain = _load_chain(args.chain)
-    miner = Wallet.load(args.miner_wallet)
-    block = chain.mine_pending_transactions(miner.address)
-    chain.save(args.chain)
-    _emit(
-        args,
-        {"block": block.index, "hash": block.hash, "transactions": len(block.transactions)},
-        f"mined block #{block.index}\nhash: {block.hash}\ntransactions: {len(block.transactions)}",
-    )
-
-
-def cmd_chain(args: argparse.Namespace) -> None:
-    """Print high-level chain status for compatibility or UTXO storage."""
-
-    if getattr(args, "db", None):
-        cmd_utxo_status(args)
-        return
-    chain = _load_chain(args.chain)
-    if args.json:
-        print(
-            json.dumps(
-                {
-                    "valid": chain.is_valid(),
-                    "difficulty": chain.difficulty,
-                    "mining_reward": chain.mining_reward,
-                    "blocks": len(chain.blocks),
-                    "mempool": len(chain.mempool),
-                    "tip": chain.last_block.hash,
-                },
-                sort_keys=True,
-            )
-        )
-        return
-    print(f"valid: {chain.is_valid()}")
-    print(f"difficulty: {chain.difficulty}")
-    print(f"mining reward: {chain.mining_reward}")
-    print(f"blocks: {len(chain.blocks)}")
-    print(f"mempool: {len(chain.mempool)}")
-    for block in chain.blocks:
-        print(
-            f"#{block.index} {block.hash[:16]}... txs={len(block.transactions)} nonce={block.nonce}"
-        )
 
 
 def _runtime_config(args: argparse.Namespace) -> NodeRuntimeConfig:
@@ -184,7 +67,7 @@ def _wallet_or_address(args: argparse.Namespace) -> str:
     raise SystemExit("provide --wallet or --address")
 
 
-def cmd_utxo_init(args: argparse.Namespace) -> None:
+def cmd_init(args: argparse.Namespace) -> None:
     """Initialize a UTXO node database with one genesis allocation."""
 
     wallet = Wallet.load(args.genesis_wallet)
@@ -209,7 +92,7 @@ def cmd_utxo_init(args: argparse.Namespace) -> None:
         runtime.stop()
 
 
-def cmd_utxo_status(args: argparse.Namespace) -> None:
+def cmd_chain(args: argparse.Namespace) -> None:
     """Report UTXO node height, tip, supply, mempool, and optional balance."""
 
     node = ConsensusNode.open(
@@ -225,7 +108,7 @@ def cmd_utxo_status(args: argparse.Namespace) -> None:
             "supply": node.state.utxos.total(),
             "mempool": len(node.mempool),
         }
-        if args.wallet:
+        if getattr(args, "wallet", None):
             wallet = Wallet.load(args.wallet)
             balance = sum(output.output.amount for output in node.spendable_outputs(wallet.address))
             payload["address"] = wallet.address
@@ -245,7 +128,29 @@ def cmd_utxo_status(args: argparse.Namespace) -> None:
         node.close()
 
 
-def cmd_utxo_utxos(args: argparse.Namespace) -> None:
+def cmd_balance(args: argparse.Namespace) -> None:
+    """Report a wallet balance from UTXO state."""
+
+    node = ConsensusNode.open(
+        args.db,
+        difficulty=args.difficulty,
+        block_subsidy=args.reward,
+    )
+    try:
+        wallet = Wallet.load(args.wallet)
+        summary = node.spendable_summary(wallet.address)
+        summary["height"] = node.height
+        summary["tip"] = node.tip_hash
+        _emit(
+            args,
+            summary,
+            f"address:   {wallet.address}\nconfirmed: {summary['balance']}",
+        )
+    finally:
+        node.close()
+
+
+def cmd_utxos(args: argparse.Namespace) -> None:
     """List spendable UTXOs for a wallet or address."""
 
     address = _wallet_or_address(args)
@@ -268,7 +173,7 @@ def cmd_utxo_utxos(args: argparse.Namespace) -> None:
         node.close()
 
 
-def cmd_utxo_send(args: argparse.Namespace) -> None:
+def cmd_send(args: argparse.Namespace) -> None:
     """Create, sign, validate, and persist a UTXO mempool transaction."""
 
     sender = Wallet.load(args.from_wallet)
@@ -293,7 +198,7 @@ def cmd_utxo_send(args: argparse.Namespace) -> None:
         node.close()
 
 
-def cmd_utxo_mempool(args: argparse.Namespace) -> None:
+def cmd_mempool(args: argparse.Namespace) -> None:
     """Inspect, prune, or clear the persistent UTXO mempool."""
 
     node = ConsensusNode.open(
@@ -327,7 +232,7 @@ def cmd_utxo_mempool(args: argparse.Namespace) -> None:
         node.close()
 
 
-def cmd_utxo_block(args: argparse.Namespace) -> None:
+def cmd_block(args: argparse.Namespace) -> None:
     """Inspect a UTXO block by active-chain height or block hash."""
 
     node = ConsensusNode.open(
@@ -350,7 +255,7 @@ def cmd_utxo_block(args: argparse.Namespace) -> None:
         node.close()
 
 
-def cmd_utxo_tx(args: argparse.Namespace) -> None:
+def cmd_tx(args: argparse.Namespace) -> None:
     """Inspect a confirmed or mempool UTXO transaction by txid."""
 
     node = ConsensusNode.open(
@@ -373,7 +278,7 @@ def cmd_utxo_tx(args: argparse.Namespace) -> None:
         node.close()
 
 
-def cmd_utxo_mine(args: argparse.Namespace) -> None:
+def cmd_mine(args: argparse.Namespace) -> None:
     """Mine a UTXO block paying fees and subsidy to a wallet."""
 
     wallet = Wallet.load(args.miner_wallet)
@@ -398,7 +303,7 @@ def cmd_utxo_mine(args: argparse.Namespace) -> None:
         node.close()
 
 
-def cmd_utxo_serve(args: argparse.Namespace) -> None:
+def cmd_serve(args: argparse.Namespace) -> None:
     """Start the UTXO TCP peer service for the lifetime of the command."""
 
     runtime = NodeRuntime.open(_runtime_config(args))
@@ -414,17 +319,23 @@ def cmd_utxo_serve(args: argparse.Namespace) -> None:
         runtime.stop()
 
 
-def _add_utxo_runtime_args(parser: argparse.ArgumentParser) -> None:
-    """Add runtime flags shared by UTXO initialization and serving commands."""
+def _add_node_args(parser: argparse.ArgumentParser) -> None:
+    """Add node database and consensus-parameter flags."""
 
     parser.add_argument("--db", required=True)
+    parser.add_argument("--difficulty", type=int, default=0)
+    parser.add_argument("--reward", type=int, default=50)
+
+
+def _add_runtime_args(parser: argparse.ArgumentParser) -> None:
+    """Add runtime flags used by initialization and serving commands."""
+
+    _add_node_args(parser)
     parser.add_argument("--network", default="regtest")
     parser.add_argument("--node-id", default="node")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--peer-auth-key", required=True)
-    parser.add_argument("--difficulty", type=int, default=0)
-    parser.add_argument("--reward", type=int, default=50)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -442,127 +353,63 @@ def build_parser() -> argparse.ArgumentParser:
     wallet_new.set_defaults(func=cmd_wallet_new)
 
     init = subparsers.add_parser("init")
-    init_store = init.add_mutually_exclusive_group(required=True)
-    init_store.add_argument("--chain")
-    init_store.add_argument("--db")
+    _add_runtime_args(init)
     init.add_argument("--genesis-wallet", required=True)
     init.add_argument("--amount", type=int, default=100)
-    init.add_argument("--difficulty", type=int, default=0)
-    init.add_argument("--reward", type=int, default=50)
-    init.add_argument("--network", default="regtest")
-    init.add_argument("--node-id", default="node")
-    init.add_argument("--host", default="127.0.0.1")
-    init.add_argument("--port", type=int, default=0)
-    init.add_argument("--peer-auth-key", required=False)
     init.set_defaults(func=cmd_init)
 
     balance = subparsers.add_parser("balance")
-    balance_store = balance.add_mutually_exclusive_group(required=True)
-    balance_store.add_argument("--chain")
-    balance_store.add_argument("--db")
+    _add_node_args(balance)
     balance.add_argument("--wallet", required=True)
-    balance.add_argument("--difficulty", type=int, default=0)
-    balance.add_argument("--reward", type=int, default=50)
     balance.set_defaults(func=cmd_balance)
 
     send = subparsers.add_parser("send")
-    send_store = send.add_mutually_exclusive_group(required=True)
-    send_store.add_argument("--chain")
-    send_store.add_argument("--db")
+    _add_node_args(send)
     send.add_argument("--from-wallet", required=True)
     send.add_argument("--to-wallet")
     send.add_argument("--to-address")
     send.add_argument("--amount", type=int, required=True)
     send.add_argument("--fee", type=int, default=1)
-    send.add_argument("--difficulty", type=int, default=0)
-    send.add_argument("--reward", type=int, default=50)
     send.set_defaults(func=cmd_send)
 
     mine = subparsers.add_parser("mine")
-    mine_store = mine.add_mutually_exclusive_group(required=True)
-    mine_store.add_argument("--chain")
-    mine_store.add_argument("--db")
+    _add_node_args(mine)
     mine.add_argument("--miner-wallet", required=True)
-    mine.add_argument("--difficulty", type=int, default=0)
-    mine.add_argument("--reward", type=int, default=50)
     mine.set_defaults(func=cmd_mine)
 
     show_chain = subparsers.add_parser("chain")
-    chain_store = show_chain.add_mutually_exclusive_group(required=True)
-    chain_store.add_argument("--chain")
-    chain_store.add_argument("--db")
+    _add_node_args(show_chain)
     show_chain.add_argument("--wallet")
-    show_chain.add_argument("--difficulty", type=int, default=0)
-    show_chain.add_argument("--reward", type=int, default=50)
     show_chain.set_defaults(func=cmd_chain)
 
-    utxo_init = subparsers.add_parser("utxo-init")
-    _add_utxo_runtime_args(utxo_init)
-    utxo_init.add_argument("--genesis-wallet", required=True)
-    utxo_init.add_argument("--amount", type=int, default=100)
-    utxo_init.set_defaults(func=cmd_utxo_init)
+    utxos = subparsers.add_parser("utxos")
+    _add_node_args(utxos)
+    utxos.add_argument("--wallet")
+    utxos.add_argument("--address")
+    utxos.set_defaults(func=cmd_utxos)
 
-    utxo_status = subparsers.add_parser("utxo-status")
-    utxo_status.add_argument("--db", required=True)
-    utxo_status.add_argument("--wallet")
-    utxo_status.add_argument("--difficulty", type=int, default=0)
-    utxo_status.add_argument("--reward", type=int, default=50)
-    utxo_status.set_defaults(func=cmd_utxo_status)
-
-    utxo_utxos = subparsers.add_parser("utxo-utxos")
-    utxo_utxos.add_argument("--db", required=True)
-    utxo_utxos.add_argument("--wallet")
-    utxo_utxos.add_argument("--address")
-    utxo_utxos.add_argument("--difficulty", type=int, default=0)
-    utxo_utxos.add_argument("--reward", type=int, default=50)
-    utxo_utxos.set_defaults(func=cmd_utxo_utxos)
-
-    utxo_send = subparsers.add_parser("utxo-send")
-    utxo_send.add_argument("--db", required=True)
-    utxo_send.add_argument("--from-wallet", required=True)
-    utxo_send.add_argument("--to-wallet")
-    utxo_send.add_argument("--to-address")
-    utxo_send.add_argument("--amount", type=int, required=True)
-    utxo_send.add_argument("--fee", type=int, default=1)
-    utxo_send.add_argument("--difficulty", type=int, default=0)
-    utxo_send.add_argument("--reward", type=int, default=50)
-    utxo_send.set_defaults(func=cmd_utxo_send)
-
-    utxo_mempool = subparsers.add_parser("utxo-mempool")
-    utxo_mempool.add_argument("--db", required=True)
-    utxo_mempool.add_argument("--difficulty", type=int, default=0)
-    utxo_mempool.add_argument("--reward", type=int, default=50)
-    mempool_actions = utxo_mempool.add_mutually_exclusive_group()
+    mempool = subparsers.add_parser("mempool")
+    _add_node_args(mempool)
+    mempool_actions = mempool.add_mutually_exclusive_group()
     mempool_actions.add_argument("--prune", action="store_true")
     mempool_actions.add_argument("--clear", action="store_true")
-    utxo_mempool.set_defaults(func=cmd_utxo_mempool)
+    mempool.set_defaults(func=cmd_mempool)
 
-    utxo_block = subparsers.add_parser("utxo-block")
-    utxo_block.add_argument("--db", required=True)
-    block_selector = utxo_block.add_mutually_exclusive_group(required=True)
+    block = subparsers.add_parser("block")
+    _add_node_args(block)
+    block_selector = block.add_mutually_exclusive_group(required=True)
     block_selector.add_argument("--hash")
     block_selector.add_argument("--height", type=int)
-    utxo_block.add_argument("--difficulty", type=int, default=0)
-    utxo_block.add_argument("--reward", type=int, default=50)
-    utxo_block.set_defaults(func=cmd_utxo_block)
+    block.set_defaults(func=cmd_block)
 
-    utxo_tx = subparsers.add_parser("utxo-tx")
-    utxo_tx.add_argument("--db", required=True)
-    utxo_tx.add_argument("--txid", required=True)
-    utxo_tx.add_argument("--difficulty", type=int, default=0)
-    utxo_tx.add_argument("--reward", type=int, default=50)
-    utxo_tx.set_defaults(func=cmd_utxo_tx)
+    tx = subparsers.add_parser("tx")
+    _add_node_args(tx)
+    tx.add_argument("--txid", required=True)
+    tx.set_defaults(func=cmd_tx)
 
-    utxo_mine = subparsers.add_parser("utxo-mine")
-    utxo_mine.add_argument("--db", required=True)
-    utxo_mine.add_argument("--miner-wallet", required=True)
-    utxo_mine.add_argument("--difficulty", type=int, default=0)
-    utxo_mine.add_argument("--reward", type=int, default=50)
-    utxo_mine.set_defaults(func=cmd_utxo_mine)
-
-    utxo_serve = subparsers.add_parser("utxo-serve")
-    _add_utxo_runtime_args(utxo_serve)
-    utxo_serve.set_defaults(func=cmd_utxo_serve)
+    serve = subparsers.add_parser("serve")
+    _add_runtime_args(serve)
+    serve.set_defaults(func=cmd_serve)
 
     return parser
 
@@ -574,7 +421,7 @@ def main() -> None:
     args = parser.parse_args()
     try:
         args.func(args)
-    except (BlockchainError, ConsensusNodeError, NodeRuntimeError) as exc:
+    except (ConsensusNodeError, NodeRuntimeError) as exc:
         raise SystemExit(str(exc)) from exc
 
 

@@ -67,5 +67,5 @@ Security incidents should follow the runbook in `docs/incident-response.md`.
 - Public mainnet value
 - Large-scale peer-to-peer adversarial networking
 - Custodial wallet operations
-- Consensus compatibility with other implementations
+- Consensus interoperability with other implementations
 - Resistance to large-scale denial-of-service attacks

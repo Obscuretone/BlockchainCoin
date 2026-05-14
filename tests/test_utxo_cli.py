@@ -28,7 +28,7 @@ class UTXOCliTests(unittest.TestCase):
             init = json.loads(
                 self.run_cli(
                     "--json",
-                    "utxo-init",
+                    "init",
                     "--db",
                     db,
                     "--genesis-wallet",
@@ -43,16 +43,14 @@ class UTXOCliTests(unittest.TestCase):
             )
             self.assertEqual(init["height"], 0)
 
-            status = json.loads(
-                self.run_cli("--json", "utxo-status", "--db", db, "--wallet", wallet)
-            )
+            status = json.loads(self.run_cli("--json", "chain", "--db", db, "--wallet", wallet))
             self.assertEqual(status["height"], 0)
             self.assertEqual(status["supply"], 25)
             self.assertEqual(status["balance"], 25)
-            public_status = json.loads(self.run_cli("--json", "utxo-status", "--db", db))
+            public_status = json.loads(self.run_cli("--json", "chain", "--db", db))
             self.assertNotIn("balance", public_status)
             wallet_utxos = json.loads(
-                self.run_cli("--json", "utxo-utxos", "--db", db, "--wallet", wallet)
+                self.run_cli("--json", "utxos", "--db", db, "--wallet", wallet)
             )
             self.assertEqual(wallet_utxos["balance"], 25)
             self.assertEqual(wallet_utxos["count"], 1)
@@ -61,7 +59,7 @@ class UTXOCliTests(unittest.TestCase):
             sent = json.loads(
                 self.run_cli(
                     "--json",
-                    "utxo-send",
+                    "send",
                     "--db",
                     db,
                     "--from-wallet",
@@ -75,46 +73,44 @@ class UTXOCliTests(unittest.TestCase):
                 )
             )
             self.assertEqual(sent["inputs"], 1)
-            queued = json.loads(self.run_cli("--json", "utxo-mempool", "--db", db))
+            queued = json.loads(self.run_cli("--json", "mempool", "--db", db))
             self.assertEqual(queued["count"], 1)
             self.assertEqual(queued["transactions"][0]["fee"], 1)
             self.assertTrue(queued["transactions"][0]["valid"])
-            listed = self.run_cli("utxo-mempool", "--db", db)
+            listed = self.run_cli("mempool", "--db", db)
             self.assertIn(sent["txid"], listed)
             pending_tx = json.loads(
-                self.run_cli("--json", "utxo-tx", "--db", db, "--txid", sent["txid"])
+                self.run_cli("--json", "tx", "--db", db, "--txid", sent["txid"])
             )
             self.assertEqual(pending_tx["status"], "mempool")
             self.assertEqual(pending_tx["output_count"], 2)
-            pruned = json.loads(self.run_cli("--json", "utxo-mempool", "--db", db, "--prune"))
+            pruned = json.loads(self.run_cli("--json", "mempool", "--db", db, "--prune"))
             self.assertEqual(pruned["removed"], 0)
 
-            mined = self.run_cli("utxo-mine", "--db", db, "--miner-wallet", wallet)
+            mined = self.run_cli("mine", "--db", db, "--miner-wallet", wallet)
             self.assertIn("mined UTXO block #1", mined)
             genesis_block = json.loads(
-                self.run_cli("--json", "utxo-block", "--db", db, "--hash", init["tip"])
+                self.run_cli("--json", "block", "--db", db, "--hash", init["tip"])
             )
             self.assertEqual(genesis_block["height"], 0)
             self.assertTrue(genesis_block["active"])
-            mined_block = json.loads(
-                self.run_cli("--json", "utxo-block", "--db", db, "--height", "1")
-            )
+            mined_block = json.loads(self.run_cli("--json", "block", "--db", db, "--height", "1"))
             self.assertEqual(mined_block["transaction_count"], 2)
             self.assertIn(sent["txid"], mined_block["transactions"])
-            confirmed_tx = self.run_cli("utxo-tx", "--db", db, "--txid", sent["txid"])
+            confirmed_tx = self.run_cli("tx", "--db", db, "--txid", sent["txid"])
             self.assertIn("status=confirmed", confirmed_tx)
             self.assertIn("height=1", confirmed_tx)
 
-            status = json.loads(self.run_cli("--json", "utxo-status", "--db", db, "--wallet", bob))
+            status = json.loads(self.run_cli("--json", "chain", "--db", db, "--wallet", bob))
             self.assertEqual(status["height"], 1)
             self.assertEqual(status["balance"], 5)
-            bob_utxos = self.run_cli("utxo-utxos", "--db", db, "--address", status["address"])
+            bob_utxos = self.run_cli("utxos", "--db", db, "--address", status["address"])
             self.assertIn("amount=5", bob_utxos)
 
             served = json.loads(
                 self.run_cli(
                     "--json",
-                    "utxo-serve",
+                    "serve",
                     "--db",
                     db,
                     "--node-id",
@@ -128,7 +124,7 @@ class UTXOCliTests(unittest.TestCase):
 
             with self.assertRaises(SystemExit):
                 self.run_cli(
-                    "utxo-send",
+                    "send",
                     "--db",
                     db,
                     "--from-wallet",
@@ -137,13 +133,16 @@ class UTXOCliTests(unittest.TestCase):
                     "1",
                 )
             with self.assertRaises(SystemExit):
-                self.run_cli("utxo-utxos", "--db", db)
+                self.run_cli("utxos", "--db", db)
             with self.assertRaises(SystemExit):
-                self.run_cli("utxo-utxos", "--db", db, "--address", "bad")
+                self.run_cli("utxos", "--db", db, "--address", "bad")
             with self.assertRaises(SystemExit):
-                self.run_cli("utxo-block", "--db", db, "--height", "99")
+                self.run_cli("block", "--db", db, "--height", "99")
             with self.assertRaises(SystemExit):
-                self.run_cli("utxo-tx", "--db", db, "--txid", "missing")
+                self.run_cli("tx", "--db", db, "--txid", "missing")
+
+            with self.assertRaises(SystemExit):
+                self.run_cli("chain", "--db", db, "--difficulty", "1")
 
     def test_utxo_mempool_clear(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -154,7 +153,7 @@ class UTXOCliTests(unittest.TestCase):
             self.run_cli("wallet", "new", "--out", wallet)
             self.run_cli("wallet", "new", "--out", bob)
             self.run_cli(
-                "utxo-init",
+                "init",
                 "--db",
                 db,
                 "--genesis-wallet",
@@ -165,7 +164,7 @@ class UTXOCliTests(unittest.TestCase):
                 "cli-test-key",
             )
             self.run_cli(
-                "utxo-send",
+                "send",
                 "--db",
                 db,
                 "--from-wallet",
@@ -178,11 +177,11 @@ class UTXOCliTests(unittest.TestCase):
                 "1",
             )
 
-            cleared = json.loads(self.run_cli("--json", "utxo-mempool", "--db", db, "--clear"))
+            cleared = json.loads(self.run_cli("--json", "mempool", "--db", db, "--clear"))
             self.assertEqual(cleared["removed"], 1)
-            empty = self.run_cli("utxo-mempool", "--db", db)
+            empty = self.run_cli("mempool", "--db", db)
             self.assertEqual(empty.strip(), "UTXO mempool is empty")
-            empty_utxos = self.run_cli("utxo-utxos", "--db", db, "--wallet", bob)
+            empty_utxos = self.run_cli("utxos", "--db", db, "--wallet", bob)
             self.assertIn("no spendable UTXOs", empty_utxos)
 
     def test_primary_cli_verbs_can_drive_utxo_node_with_db(self) -> None:
@@ -248,9 +247,7 @@ class UTXOCliTests(unittest.TestCase):
             mined = json.loads(self.run_cli("--json", "mine", "--db", db, "--miner-wallet", miner))
             self.assertEqual(mined["height"], 1)
 
-            bob_status = json.loads(
-                self.run_cli("--json", "utxo-status", "--db", db, "--wallet", bob)
-            )
+            bob_status = json.loads(self.run_cli("--json", "chain", "--db", db, "--wallet", bob))
             self.assertEqual(bob_status["balance"], 4)
 
             bob_balance = json.loads(self.run_cli("--json", "balance", "--db", db, "--wallet", bob))

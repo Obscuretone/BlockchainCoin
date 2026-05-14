@@ -5,7 +5,6 @@ from typing import cast
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from blockchaincoin.chain import MAX_MONEY
 from blockchaincoin.consensus import (
     BINARY_CODEC_VERSION,
     COINBASE_PREV_TXID,
@@ -25,6 +24,7 @@ from blockchaincoin.consensus import (
     calculate_transaction_root,
     rebuild_state_from_blocks,
 )
+from blockchaincoin.constants import MAX_MONEY
 from blockchaincoin.crypto import Wallet
 
 SPEND_CASES = st.lists(

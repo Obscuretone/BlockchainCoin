@@ -208,8 +208,8 @@ class Wallet:
     def create(cls, bits: int | None = None) -> Wallet:
         """Generate a new Ed25519 wallet.
 
-        ``bits`` exists for legacy caller compatibility. Ed25519 key size is
-        fixed, so any provided value must be 256.
+        ``bits`` exists for callers that want to assert key size explicitly.
+        Ed25519 key size is fixed, so any provided value must be 256.
         """
 
         if bits is not None and bits != 256:

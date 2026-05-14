@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .chain import MAX_MONEY
+from .constants import MAX_MONEY
 from .crypto import Wallet
 from .service import NodeService
 from .transport import NodeTCPServerAdapter

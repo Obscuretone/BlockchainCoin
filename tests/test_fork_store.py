@@ -1,4 +1,3 @@
-import json
 import sqlite3
 import tempfile
 import unittest
@@ -96,39 +95,13 @@ class ForkStoreTests(unittest.TestCase):
             self.assertEqual(reopened_tip.block.hash, high_a.hash)
             reopened.close()
 
-            legacy_path = Path(tmp) / "legacy-forks.sqlite3"
-            legacy_store = SQLiteForkStore(legacy_path)
-            with legacy_store.connection:
-                legacy_store.connection.execute(
-                    """
-                    INSERT INTO fork_blocks (
-                        hash,
-                        height,
-                        previous_hash,
-                        difficulty,
-                        cumulative_work,
-                        data
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        genesis.hash,
-                        genesis.height,
-                        genesis.previous_hash,
-                        genesis.difficulty,
-                        1,
-                        json.dumps(genesis.to_dict(), sort_keys=True, separators=(",", ":")),
-                    ),
-                )
-            legacy_tip = legacy_store.best_tip()
-            self.assertIsNotNone(legacy_tip)
-            assert legacy_tip is not None
-            self.assertEqual(legacy_tip.block.hash, genesis.hash)
+            missing_params = SQLiteForkStore(Path(tmp) / "missing-params.sqlite3")
+            missing_params.put_block(genesis)
             with self.assertRaises(StorageError):
-                legacy_store.require_chain_parameters(
+                missing_params.require_chain_parameters(
                     ChainParameters(difficulty=0, block_subsidy=50, max_money=21_000_000)
                 )
-            legacy_store.close()
+            missing_params.close()
 
     def test_fork_store_rejects_orphans_bad_genesis_and_schema(self) -> None:
         genesis = ConsensusNode._build_genesis_block({self.alice.address: 10}, difficulty=0)

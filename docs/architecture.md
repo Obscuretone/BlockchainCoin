@@ -36,7 +36,7 @@ Minimum academic release records:
 - Wallet custody plan, encrypted wallet locations, backup schedule, and restore procedure.
 - Incident commander, release reviewer, audit evidence package, and escalation contacts.
 
-The compatibility account-ledger path remains available for local workflows, but the UTXO node path is the consensus surface for academic evaluation.
+The UTXO node path is the only consensus surface for academic evaluation.
 
 ## Consensus
 

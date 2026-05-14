@@ -412,7 +412,7 @@ def block_message(block: ConsensusBlock) -> PeerMessage:
 
 
 def transaction_from_payload(payload: Mapping[str, object]) -> ConsensusTransaction:
-    """Decode a transaction payload from binary or legacy dictionary form."""
+    """Decode a transaction payload from the canonical binary form."""
 
     raw_transaction = payload.get("transaction_bytes")
     if isinstance(raw_transaction, str):
@@ -420,14 +420,11 @@ def transaction_from_payload(payload: Mapping[str, object]) -> ConsensusTransact
             return ConsensusTransaction.from_bytes(bytes.fromhex(raw_transaction))
         except (ConsensusError, ValueError) as exc:
             raise NetworkError("transaction binary payload is invalid") from exc
-    transaction = payload.get("transaction")
-    if isinstance(transaction, dict):
-        return ConsensusTransaction.from_dict(transaction)
     raise NetworkError("transaction payload is invalid")
 
 
 def block_from_payload(payload: Mapping[str, object]) -> ConsensusBlock:
-    """Decode a block payload from binary or legacy dictionary form."""
+    """Decode a block payload from the canonical binary form."""
 
     raw_block = payload.get("block_bytes")
     if isinstance(raw_block, str):
@@ -435,9 +432,6 @@ def block_from_payload(payload: Mapping[str, object]) -> ConsensusBlock:
             return ConsensusBlock.from_bytes(bytes.fromhex(raw_block))
         except (ConsensusError, ValueError) as exc:
             raise NetworkError("block binary payload is invalid") from exc
-    block = payload.get("block")
-    if isinstance(block, dict):
-        return ConsensusBlock.from_dict(block)
     raise NetworkError("block payload is invalid")
 
 

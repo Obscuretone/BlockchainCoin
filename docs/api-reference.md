@@ -9,7 +9,7 @@ Consensus-critical UTXO rules and canonical codecs.
 - `OutPoint`: identifies one transaction output by transaction ID and index.
 - `TxInput`: spends an outpoint and optionally carries signature witness data.
 - `TxOutput`: assigns a positive amount to a `bcc_` address.
-- `ConsensusTransaction`: immutable transaction with canonical `txid`, signing messages, binary encoding, and dictionary compatibility.
+- `ConsensusTransaction`: immutable transaction with canonical `txid`, signing messages, and binary encoding.
 - `calculate_transaction_root`: calculates the Merkle root committed by a block.
 - `ConsensusBlock`: block header plus ordered transactions.
 - `UTXO` and `UTXOSet`: current spendable output representation.
@@ -41,7 +41,6 @@ SQLite-backed durable state.
 - `SQLiteMempoolStore`: restart cache for mempool transactions.
 - `SQLiteInvalidBlockCache`: persistent invalid-block hash cache.
 - `SQLitePeerSyncStore`: persistent peer sync quality counters.
-- `SQLiteBlockStore` and `SQLiteConsensusStore`: legacy and linear block stores.
 
 ## `blockchaincoin.network`
 

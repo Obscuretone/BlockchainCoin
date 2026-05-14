@@ -218,11 +218,10 @@ class NetworkProtocolTests(unittest.TestCase):
         self.assertEqual(block_from_payload(parsed_block.payload).hash, self.block.hash)
         self.assertNotIn("transaction", parsed_tx.payload)
         self.assertNotIn("block", parsed_block.payload)
-        self.assertEqual(
-            transaction_from_payload({"transaction": self.transaction.to_dict()}).txid,
-            self.transaction.txid,
-        )
-        self.assertEqual(block_from_payload({"block": self.block.to_dict()}).hash, self.block.hash)
+        with self.assertRaises(NetworkError):
+            transaction_from_payload({"transaction": self.transaction.to_dict()})
+        with self.assertRaises(NetworkError):
+            block_from_payload({"block": self.block.to_dict()})
         self.assertEqual(
             json.loads(parsed_block.encode_payload().decode("utf-8"))["type"],
             "block",

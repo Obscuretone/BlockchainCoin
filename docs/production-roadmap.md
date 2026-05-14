@@ -38,7 +38,7 @@ Done:
 - UTXO snapshot cache mismatch detection and rebuild from block-store replay
 - Persistent local mempool storage with restart pruning
 - Operator CLI for UTXO inspection, mempool inspection, block lookup, and transaction lookup
-- Primary CLI verbs for init, send, mine, balance, and chain status can target the UTXO consensus node via `--db` while legacy account-chain usage remains available via `--chain`
+- Primary CLI verbs for init, send, mine, balance, and chain status target the UTXO consensus node via `--db`
 - Configurable mempool admission policy for transaction count, transaction byte size, input/output fanout, and minimum relay fee
 - Minimum relay fee-rate policy for size-aware mempool admission
 - Fee-rate-prioritized block assembly with dependency-safe mempool ordering
@@ -48,15 +48,15 @@ Done:
 - Separate mempool policy rejection path from consensus validation errors
 - Canonical binary serialization for UTXO transaction IDs, Merkle tree leaves, and block header hashes
 - Canonical binary peer payloads for UTXO transaction/block relay messages
-- Canonical binary local mempool transaction persistence with legacy JSON fallback
-- Canonical binary consensus block-store payloads with legacy JSON fallback
+- Canonical binary local mempool transaction persistence
+- Canonical binary consensus block-store payloads
 - Explicit supported-version gates for consensus transactions and blocks
 - Property tests for UTXO supply invariants and replay/double-spend rejection
 - Pyright/Pylance clean package and test suite
 
 Remaining:
 
-- Complete account-ledger CLI deprecation/removal after compatibility window
+- None for this phase's current UTXO consensus target
 - Broaden fee-market design beyond deterministic local policy
 
 ## Phase 3: Fork Choice

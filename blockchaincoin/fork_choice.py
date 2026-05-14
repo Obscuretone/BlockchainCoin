@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .chain import MAX_MONEY
 from .consensus import ConsensusBlock, ConsensusError, ConsensusState, rebuild_state_from_blocks
+from .constants import MAX_MONEY
 from .storage import SQLiteForkStore, StorageError, StoredConsensusBlock
 
 
