@@ -341,6 +341,17 @@ class TransportTests(unittest.TestCase):
         self.assertTrue(resetting_socket.closed)
         self.assertIsNone(client.socket)
 
+    def test_client_recv_treats_empty_read_as_eof(self) -> None:
+        class EmptyReadSocket:
+            def recv(self, _max_bytes: int) -> bytes:
+                return b""
+
+        client = TCPPeerClient("unused", 0, AUTH_KEY)
+        client.socket = cast(socket.socket, EmptyReadSocket())
+
+        self.assertEqual(client.recv_messages(), [])
+        self.assertIsNotNone(client.socket)
+
 
 if __name__ == "__main__":
     unittest.main()
