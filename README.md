@@ -1,5 +1,10 @@
 # BlockchainCoin
 
+> **Project status: Codex experiment.** This was vibe-coded with Codex to explore
+> blockchain mechanics. It is a learning exercise, not a flagship portfolio
+> project or a production-ready system. The technical notes below describe
+> the experiment; they are not independent validation of its guarantees.
+
 BlockchainCoin is a technically complete academic release of a UTXO blockchain currency node written in Python. The project is intended for review, teaching, controlled experiments, reproducible builds, and research networks where the claims can be inspected directly in code, tests, and documentation.
 
 The UTXO-native node is the only chain implementation in the package.
