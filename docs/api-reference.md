@@ -89,6 +89,33 @@ Wallet and signature primitives.
 - `Wallet`: Ed25519 keypair, signing, serialization, encryption, and loading.
 - `sha256_hex`, `canonical_json`, `is_valid_address`, and `verify_signature`: shared cryptographic helpers.
 
+## `blockchaincoin.gui`
+
+Native Tk desktop console, launched with `blockchaincoin-gui` or
+`python -m blockchaincoin.gui`.
+
+- `DesktopSession`: opens node handles for each operation, keeps wallet keys
+  local, and creates an isolated disposable chain when no database is supplied.
+  `populated=True` creates ten wallets and runs the sample workload; the launcher
+  enables it by default. The unpopulated fixture has Alice and Bob.
+- `DesktopApp`: account balances, named recipients, reviewed payments, receiving
+  addresses, searchable and filtered account-specific payment history, all-ledger
+  payment summaries, named payee shortcuts, and receipts. Developer inspection and
+  manual mining live in a separate More window. Demo payments confirm to an
+  internal reward wallet; existing chains retain their normal confirmation flow.
+  Node operations run on one background worker. Closing waits for active work.
+
+The desktop interface does not start an HTTP or peer server. Tk is imported
+only by this module; the existing CLI can run without it.
+
+## `blockchaincoin.demo`
+
+`DEMO_BALANCES` defines ten synthetic starting allocations. `simulate_payments`
+expects a freshly initialized node using those allocations and wallets. It runs
+30 signed payments, confirms each to a separate reward wallet, checks balances,
+supply and overspend rejection, and returns a public report without private keys.
+This fixed workload is used by the populated desktop demo and its regression test.
+
 ## `blockchaincoin.release`
 
 Release artifact helpers.

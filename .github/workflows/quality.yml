@@ -40,6 +40,11 @@ jobs:
       - name: Ruff format check
         run: .venv/bin/ruff format --check .
 
+      - name: Install desktop test display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb python3-tk
+
       - name: Ruff lint
         run: .venv/bin/ruff check .
 
@@ -48,7 +53,7 @@ jobs:
 
       - name: Unit tests with coverage
         run: |
-          .venv/bin/coverage run -m unittest
+          xvfb-run -a .venv/bin/coverage run -m unittest
           .venv/bin/coverage report
 
       - name: Compile

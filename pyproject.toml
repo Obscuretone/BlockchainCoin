@@ -28,6 +28,7 @@ classifiers = [
 
 [project.scripts]
 blockchaincoin = "blockchaincoin.cli:main"
+blockchaincoin-gui = "blockchaincoin.gui:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["blockchaincoin"]

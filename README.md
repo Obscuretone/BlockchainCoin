@@ -9,6 +9,16 @@ BlockchainCoin is a technically complete academic release of a UTXO blockchain c
 
 The UTXO-native node is the only chain implementation in the package.
 
+## Desktop preview
+
+A native Python wallet with a compact account overview and transaction-focused
+layout. Try payments between **10 synthetic people** with 30 completed sample
+payments, named payees, searchable history, filters, and payment receipts.
+
+![Desktop account and recent transactions](docs/screenshots/dashboard.png)
+
+[Payment review and receipt screenshots, simulation results, and reproduction steps](docs/desktop-demo.md).
+
 The node ships with:
 
 - A durable full-node substrate backed by SQLite WAL storage, schema versioning, cumulative work tracking, hostile-input validation, and a 100% coverage gate.
@@ -180,6 +190,65 @@ blockchaincoin --json block --db node.sqlite3 --height 1
 blockchaincoin --json serve --db node.sqlite3 --node-id node-a --peer-auth-key "$BCC_PEER_AUTH_KEY"
 ```
 
+## Python Desktop Interface
+
+Launch the native Python desktop wallet after installing the package:
+
+```bash
+blockchaincoin-gui
+# Or, from the repository:
+python -m blockchaincoin.gui
+```
+
+On macOS, double-click `Launch Desktop.command` in the checkout. It uses
+`.desktop-venv`, then `.venv`, then `python3`. Set `BCC_DESKTOP_PYTHON` to use
+a different interpreter. The selected environment must have Tk and the
+package dependencies installed.
+
+The home screen gives recent transactions most of the space, with a compact
+completed balance, money-in / money-out totals, payment count, **Send money**,
+**Receive money**, and named payee shortcuts. Totals cover completed payments
+across the loaded ledger, exclude opening balances and rewards, and include fees
+in money out. Search history by person, amount, or payment reference; filter
+sent, received, or pending payments. Select a payment for its receipt. Sending lets you choose another loaded
+account by name or paste a payment address, then review the recipient, amount,
+1 BCC fee and total before confirming. Receive provides a copyable address.
+History shows incoming and outgoing amounts with Pending or Completed status.
+Outgoing history amounts include the payment fee.
+
+The default creates 10 separate demo wallets and runs 30 signed payments across
+three rounds, starting from 12,200 BCC in user allocations. Alice opens with a
+completed balance of 2,530 BCC after the sample payments. Each account has its
+own incoming and outgoing history. This is synthetic activity on one local node,
+not a study with real people or a ten-peer network. Demo payments confirm automatically; an internal demo wallet receives
+confirmation rewards so they do not distort the account balances. No mining or
+blockchain knowledge is needed. Demo keys remain in memory and temporary data is
+removed when the window closes. These coins have no monetary value.
+
+To use an existing research chain, pass its database and matching parameters:
+
+```bash
+blockchaincoin-gui --db node.sqlite3 --difficulty 0 --reward 50
+```
+
+Use **Open wallet** to select a wallet file and enter its password if encrypted.
+Keys stay in this process and loading does not rewrite the wallet file. On an
+existing chain, payments remain pending until that chain confirms them. Automatic
+confirmation applies only to the disposable demo. Balances show completed
+payments, with pending payments listed separately.
+
+The optional **More** view contains block inspection and manual block generation
+for developers. Manual generation pays rewards to the selected account.
+The desktop app opens the local node through its existing
+API, including normal restart validation and cache/mempool maintenance. It does
+not start peer networking or an HTTP server. Do not open the same database in
+another writer while operating the desktop app.
+
+Tkinter must be available in the Python interpreter used to install and launch
+the package. Check with `python -m tkinter`. Some Python distributions package
+Tk separately. On Linux install the matching Tk package and a graphical display;
+on macOS use a Python installation with Tk support. CLI use does not require Tk.
+
 ## Development
 
 ```bash
@@ -189,6 +258,9 @@ pyright
 python -m compileall -q blockchaincoin tests
 python -m build
 ```
+
+Desktop tests create real Tk widgets and exercise their controls. On headless
+Linux, run the coverage command under `xvfb-run -a`; CI provides Xvfb and Tk.
 
 The coverage gate is configured in `pyproject.toml` and fails below 100%.
 

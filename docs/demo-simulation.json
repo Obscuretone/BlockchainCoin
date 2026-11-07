@@ -1,0 +1,39 @@
+{
+  "scenario": "10 synthetic people; 3 rounds of 10 signed payments",
+  "users": 10,
+  "completed_payments": 30,
+  "payment_volume_bcc": 1995,
+  "fees_bcc": 30,
+  "opening_user_balances_bcc": {
+    "Alice": 2400,
+    "Bob": 1800,
+    "Carla": 1000,
+    "Daniel": 1000,
+    "Emma": 1000,
+    "Felix": 1000,
+    "Grace": 1000,
+    "Hassan": 1000,
+    "Isla": 1000,
+    "James": 1000
+  },
+  "closing_user_balances_bcc": {
+    "Alice": 2530,
+    "Bob": 1860,
+    "Carla": 1060,
+    "Daniel": 990,
+    "Emma": 990,
+    "Felix": 990,
+    "Grace": 990,
+    "Hassan": 920,
+    "Isla": 920,
+    "James": 920
+  },
+  "user_funds_bcc": 12170,
+  "confirmation_wallet_bcc": 1530,
+  "total_supply_bcc": 13700,
+  "height": 30,
+  "pending_payments": 0,
+  "overspend_rejected": true,
+  "accounting_reconciled": true,
+  "restart_verified": true
+}
